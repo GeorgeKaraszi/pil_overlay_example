@@ -1,0 +1,5 @@
+#include "resource.h"
+#define APSTUDIO_READONLY_SYMBOLS
+#include "winres.h"
+
+IDR_SHADER			HLSL			"shaders.hlsl"

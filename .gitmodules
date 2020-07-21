@@ -1,0 +1,4 @@
+[submodule "MinHook"]
+	path = MinHook
+	url = https://github.com/Mixaill/minhook.git
+	branch = cmake
