@@ -44,3 +44,4 @@ Ankh.NoLoad
 cmake-build*/
 Overlay/imgui/imgui_demo.cpp
 MinHook/
+*_example/
