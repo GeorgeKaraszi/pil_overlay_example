@@ -1,4 +1,4 @@
-#include "WebSockets/websocket.hpp"
+#include "NetworkLayer/websocket.hpp"
 #include "pch.hpp"
 
 DWORD WINAPI MainThread(HMODULE hModule)

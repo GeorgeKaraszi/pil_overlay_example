@@ -1,10 +1,8 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_WEBSOCKETS_ROOT_CERTIFICATES_H
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_WEBSOCKETS_ROOT_CERTIFICATES_H
 
-#include <boost/asio/ssl.hpp>
+#include "boost.hpp"
 #include <string>
-
-namespace ssl = boost::asio::ssl; // from <boost/asio/ssl.hpp>
 
 namespace detail {
 

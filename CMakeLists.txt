@@ -4,10 +4,14 @@ project(pil_overlay_example)
 set(CMAKE_CXX_STANDARD 20)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(VCPKG_TARGET_ARCHITECTURE x64)
     add_definitions(-DENVIRONMENT64)
 else()
+    set(VCPKG_TARGET_ARCHITECTURE x86)
     add_definitions(-DENVIRONMENT32)
 endif()
 
+
 add_subdirectory(MinHook)
 add_subdirectory(directx_test_window)
+add_subdirectory(ps_websockets_example)
