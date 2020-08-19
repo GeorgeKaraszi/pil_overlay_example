@@ -2,6 +2,7 @@
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_MENULAYER_MENU_LAYER_HPP
 
 #include "imgui_layer.hpp"
+#include "../Planetside/team.hpp"
 
 namespace Overlay
 {
@@ -18,12 +19,14 @@ namespace Overlay
 
     struct Settings
     {
-      char team1_tag[8] = "\0";
-      char team2_tag[8] = "\0";
-      int  match_timer  = 10;
+      char current_team1_tag[8] = "FIJI\0";
+      char current_team2_tag[8] = "GOBS\0";
+      char prev_team1_tag[8]    = "\0";
+      char prev_team2_tag[8]    = "\0";
+      int  match_timer          = 10;
     };
   public:
-    MenuLayer() : ImGuiLayer() {}
+    MenuLayer() : ImGuiLayer() {};
     void OnAttach() override;
     void OnEvent() override;
 
@@ -32,12 +35,17 @@ namespace Overlay
   private:
     MenuItemType m_selected_menu;
     Settings     m_settings;
+    PlanetSide::Team m_teams[2] { PlanetSide::Team(), PlanetSide::Team() };
+
     
     void RenderMenuBody();
     void SettingsMenu();
     void TeamsMenu();
     void ScoreMenu();
+    void SaveSettings();
     void TopMenuButton(const char* menu_name, ImVec2 &size, MenuItemType target);
+    void PlayerButton(PlanetSide::Player *player);
+    void PlayerButton(const char *name, int faction);
   };
 }
 

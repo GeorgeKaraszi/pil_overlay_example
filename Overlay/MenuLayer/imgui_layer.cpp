@@ -48,8 +48,8 @@ namespace Overlay
 
   void ImGuiLayer::ApplyGuiProfile()
   {
-    auto font_path = FetchFontPath("Roboto-Medium.ttf");//"C:\\WINDOWS\\Fonts\\Roboto-Medium.ttf";
-    auto &io = ImGui::GetIO();
+    auto font_path = D3DHook::GetHook()->GeneratePath("Roboto-Medium.ttf");
+    auto &io       = ImGui::GetIO();
 
     if(std::filesystem::exists(font_path.c_str()))
     {
@@ -102,15 +102,5 @@ namespace Overlay
     colors[ImGuiCol_TextSelectedBg]       = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
     colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
     colors[ImGuiCol_DragDropTarget]       = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-  }
-
-  std::string ImGuiLayer::FetchFontPath(const char* font_file_name)
-  {
-    char dll_path[MAX_PATH] = "\0";
-    GetModuleFileName(D3DHook::GetHook()->m_hModule, dll_path, MAX_PATH);
-
-    std::string path_finder(dll_path);
-    std::string font_path = path_finder.substr(0, path_finder.find_last_of("/\\")+1);
-    return font_path + font_file_name;
   }
 }

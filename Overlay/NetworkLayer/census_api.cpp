@@ -1,10 +1,12 @@
 #include "census_api.hpp"
+#include "network_layer.hpp"
 #include <iostream>
 
 namespace Overlay
 {
-  CensusAPI::CensusAPI(WebSocket *ws) : m_ws(ws)
+  CensusAPI::CensusAPI(NetworkLayer *network) : m_network(network)
   {
+    assert(m_network != nullptr && "(CensusAPI) Networklayer is a nullptr!");
     std::string outfit_lookup_schema = R"(
       ?alias_lower=%s
       &c:join=outfit_member
@@ -31,36 +33,39 @@ namespace Overlay
     m_outfit_lookup_schema = outfit_lookup_schema;
   }
 
-//---------------------------------------------------------------------------------------------------------------------
+  //---------------------------------------------------------------------------------------------------------------------
 
-  JSON CensusAPI::get_outfit_details(const std::string &outfit_tag)
+  // Gets raw image data for a profile image (http://census.daybreakgames.com/[image_path])
+  // Ex: #get_image_data(outfit_member["character"]["profile"]["image_path"].get<std::string>());
+  void CensusAPI::QueueImageData(const std::string_view &image_path, CALLBACK_T &callback)
+  {
+    auto uri = Uri::CensusUri(m_network->m_api_key, image_path.data());
+    AddToQueue(uri, callback);
+  }
+
+  //---------------------------------------------------------------------------------------------------------------------
+
+  void CensusAPI::QueueOutfitRoster(std::string outfit_tag, CALLBACK_T &callback)
   {
     char request[512];
     auto lc_tag = boost::to_lower_copy(outfit_tag);
     sprintf_s(request, 512, m_outfit_lookup_schema.c_str(), lc_tag.c_str());
 
-    auto response = make_request(Uri::CensusUri(m_ws->m_uri.ApiKey, "/get/ps2/outfit", request));
-    return JSON::parse(response);
+    Uri uri  = Uri::CensusUri(m_network->m_api_key, "/get/ps2/outfit", request);
+    AddToQueue(uri, callback);
   }
 
-//---------------------------------------------------------------------------------------------------------------------
+  //---------------------------------------------------------------------------------------------------------------------
 
-// Gets raw image data for a profile image (http://census.daybreakgames.com/[image_path])
-// Ex: #get_image_data(outfit_member["character"]["profile"]["image_path"].get<std::string>());
-  std::string CensusAPI::get_image_data(const std::string_view &image_path)
+  void CensusAPI::PollQueue()
   {
-    return make_request(Uri::CensusUri(m_ws->m_uri.ApiKey, image_path.data()));
-  }
+    if(m_queue.empty())
+      return;
 
-
-//---------------------------------------------------------------------------------------------------------------------
-// Private Methods
-
-  std::string CensusAPI::make_request(const Uri &uri)
-  {
-    auto const                        results = m_ws->m_resolver.resolve(uri.Host, uri.Port);
-    auto                              stream  = beast::tcp_stream(m_ws->m_ioc);
-    http::request<http::string_body>  req     = { http::verb::get, uri.Request, 11 };
+    Uri uri                                 = m_queue.front().first;
+    CALLBACK_T callback                     = m_queue.front().second;
+    auto stream                             = beast::tcp_stream(m_network->GenerateIOC());
+    http::request<http::string_body>  req   = { http::verb::get, uri.Request, 11 };
     http::response<http::string_body> res;
     beast::flat_buffer                buffer;
     beast::error_code                 ec;
@@ -68,17 +73,15 @@ namespace Overlay
     req.set(http::field::host, uri.Host);
     req.set(http::field::user_agent, PIL_USER_AGENT);
 
-    stream.connect(results);
+    stream.connect(m_network->Resolve(uri));
 
     http::write(stream, req);
     http::read(stream, buffer, res);
 
     stream.socket().shutdown(tcp::socket::shutdown_both, ec);
 
-    if (ec && ec != beast::errc::not_connected)
-      throw beast::system_error{ ec };
-
-    return res.body();
+    callback(JSON::parse(res.body()));
+    m_queue.pop();
   }
 }
 

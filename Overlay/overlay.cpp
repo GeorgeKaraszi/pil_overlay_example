@@ -1,10 +1,10 @@
-#include "NetworkLayer/websocket.hpp"
 #include "pch.hpp"
 
 DWORD WINAPI MainThread(HMODULE hModule)
 {
   Overlay::D3DHook hook(hModule);
   hook.Start();
+  hook.Run();
   hook.Shutdown();
   return TRUE;
 }

@@ -1,5 +1,7 @@
-#include "websocket.hpp"
 #include <iostream>
+#include "websocket.hpp"
+#include "network_layer.hpp"
+#include "root_certificates.h"
 
 void fail(beast::error_code ec, const char* what)
 {
@@ -8,10 +10,12 @@ void fail(beast::error_code ec, const char* what)
 
 namespace Overlay
 {
-  WebSocket::WebSocket(const Uri &stream_uri) : m_uri(stream_uri)
+  WebSocket::WebSocket(NetworkLayer* network) : m_network(network)
   {
+    assert(m_network != nullptr && "(WebSocket) Networklayer is a nullptr!");
     load_root_certificates(m_ctx);
-    m_ws = new ssl_stream_ws{ net::make_strand(m_ioc), m_ctx };
+    m_uri = Uri::WebsocketUri(m_network->m_api_key);
+    m_ws  = new ssl_stream_ws{ m_network->GenerateIOC(), m_ctx };
     connect();
   }
 
@@ -43,7 +47,6 @@ namespace Overlay
       return;
     }
 
-    m_ioc.stop();
     m_ws->close(websocket::close_code::normal);
   }
 
@@ -54,9 +57,9 @@ namespace Overlay
   void WebSocket::connect()
   {
     beast::error_code ec;
-    auto const        results = m_resolver.resolve(m_uri.Host, m_uri.Port);
+    auto const results = m_network->Resolve(m_uri);
 
-    beast::get_lowest_layer(*m_ws).expires_after(std::chrono::seconds(30));
+    beast::get_lowest_layer(*m_ws).expires_after(std::chrono::seconds(15));
     beast::get_lowest_layer(*m_ws).connect(results, ec);
 
     if (ec)

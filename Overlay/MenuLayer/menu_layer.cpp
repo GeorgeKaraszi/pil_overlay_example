@@ -73,14 +73,14 @@ namespace Overlay
     ImGui::PushID("team1");
     ImGui::Text("Team 1");
     ImGui::SameLine();
-    ImGui::InputTextEx("", "Outfit Tag", m_settings.team1_tag, 5, ImVec2(140,0), input_flags);
+    ImGui::InputTextEx("", "Outfit Tag", m_settings.current_team1_tag, 5, ImVec2(140,0), input_flags);
     ImGui::PopID();
 
     ImGui::SetCursorPosX(window_sz.x / 4.0f);
     ImGui::PushID("team2");
     ImGui::Text("Team 2");
     ImGui::SameLine();
-    ImGui::InputTextEx("", "Outfit Tag", m_settings.team2_tag, 5, ImVec2(140,0), input_flags);
+    ImGui::InputTextEx("", "Outfit Tag", m_settings.current_team2_tag, 5, ImVec2(140,0), input_flags);
     ImGui::PopID();
 
     ImGui::Dummy(ImVec2(0.0f, 30.0f));
@@ -99,18 +99,49 @@ namespace Overlay
 
     ImGui::Dummy(ImVec2(0.0f, 30.0f));
     ImGui::SetCursorPosX(window_sz.x / 4.0f);
-    ImGui::SmallButton("Save");
-
+    if(ImGui::SmallButton("Save"))
+    {
+      SaveSettings();
+    }
   }
 
   void MenuLayer::TeamsMenu()
   {
+    auto render_players = [&](PlanetSide::Player* player) {
+      ImGui::PushID(player->uuid.c_str());
+      PlayerButton(player);
+      ImGui::PopID(); //uuid
+    };
 
+    ImGui::Columns(2);
+    m_teams[0].ActivePlayers(render_players);
+    ImGui::NextColumn();
+    m_teams[1].ActivePlayers(render_players);
+    ImGui::EndColumns();
   }
 
   void MenuLayer::ScoreMenu()
   {
 
+  }
+
+  void MenuLayer::SaveSettings()
+  {
+    auto census = D3DHook::GetHook()->GetNetwork()->GetCensus();
+
+    if(strcmp(m_settings.current_team1_tag, m_settings.prev_team1_tag) != 0)
+    {
+      CensusAPI::CALLBACK_T callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[0], std::placeholders::_1);
+      census->QueueOutfitRoster(m_settings.current_team1_tag, callback);
+      strcpy_s(m_settings.prev_team1_tag, 8, m_settings.current_team1_tag);
+    }
+
+    if(strcmp(m_settings.current_team2_tag, m_settings.prev_team2_tag) != 0)
+    {
+      CensusAPI::CALLBACK_T callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[1], std::placeholders::_1);
+      census->QueueOutfitRoster(m_settings.current_team2_tag, callback);
+      strcpy_s(m_settings.prev_team2_tag, 8, m_settings.current_team2_tag);
+    }
   }
 
   void MenuLayer::TopMenuButton(const char* menu_name, ImVec2 &size, MenuItemType target)
@@ -140,5 +171,41 @@ namespace Overlay
       ImGui::ButtonEx("", dummy_btn_size, dummy_flags);
       ImGui::PopStyleColor(1);
     }
+  }
+
+  void MenuLayer::PlayerButton(PlanetSide::Player *player)
+  {
+    PlayerButton(player->GetDisplayName(), player->faction);
+  }
+
+  void MenuLayer::PlayerButton(const char *name, int faction)
+  {
+    static const ImGuiButtonFlags dummy_flags = ImGuiButtonFlags_Disabled | ImGuiButtonFlags_NoNavFocus;
+    static const ImVec2 dummy_btn_size        = ImVec2(-FLT_MIN, 30.0f);
+
+    ImColor background;
+    ImColor foreground(IM_COL32_WHITE);
+
+    switch(faction)
+    {
+      case PlanetSide::Player::FACTION_VS:
+        background = ImColor(140, 12, 197);
+        break;
+      case PlanetSide::Player::FACTION_NC:
+        background = ImColor(49, 57, 247);
+        break;
+      default: // TR
+        background = ImColor(242, 13, 29);
+        break;
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_Button,        background.Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, background.Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  background.Value);
+    ImGui::PushStyleColor(ImGuiCol_Text,          foreground.Value);
+
+    ImGui::ButtonEx(name, dummy_btn_size, dummy_flags);
+
+    ImGui::PopStyleColor(4);
   }
 }

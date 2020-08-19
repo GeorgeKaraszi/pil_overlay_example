@@ -22,7 +22,6 @@ namespace Overlay
 
   protected:
     virtual void ApplyGuiProfile();
-    virtual std::string FetchFontPath(const char* font_file_name);
 
   private:
   };

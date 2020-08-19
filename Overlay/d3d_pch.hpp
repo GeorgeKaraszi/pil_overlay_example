@@ -1,6 +1,7 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_PCH_HPP
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_PCH_HPP
 
+#include "NetworkLayer/boost.hpp"
 #include <Windows.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -20,5 +21,7 @@
 
 #include "Core/layer.hpp"
 #include "Core/layer_stack.hpp"
+
+#include "NetworkLayer/network_layer.hpp"
 
 #endif //DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_PCH_HPP

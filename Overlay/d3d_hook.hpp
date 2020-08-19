@@ -20,34 +20,44 @@ namespace Overlay
 
     //-----------------------------------------------------------------------------------------------------------------
     // Begin hooking Direct X and start rending items
-    void Start();
+    bool Start();
+
+    //-----------------------------------------------------------------------------------------------------------------
+    // Continuously loops the current thread, checking the websocket for events.
+    void Run();
 
     //-----------------------------------------------------------------------------------------------------------------
     // Release captured pointers, undo hooks, and eject the library from the current process
-    void Shutdown() const;
+    void Shutdown();
 
 
     void RenderStack(IDXGISwapChain* swap_chain);
 
-    HWND GetHwnd()                            { return m_hWnd; }
+    HWND GetHwnd()                             { return m_hWnd; }
 
     [[nodiscard]]
-    ID3D11Device* GetDevice()           const { return d3dDevicePtr; }
+    ID3D11Device* GetDevice()           const  { return d3dDevicePtr; }
 
     [[nodiscard]]
-    ID3D11DeviceContext* GetDeviceCtx() const { return d3dContextPtr; }
+    ID3D11DeviceContext* GetDeviceCtx() const  { return d3dContextPtr; }
 
     [[nodiscard]]
-    IDXGISwapChain* GetSwapChain()      const { return swapChainPtr; }
+    IDXGISwapChain* GetSwapChain()      const  { return swapChainPtr; }
 
-    bool   CanDisplayMenu()                   { return m_menuLayer.isRunnable(); }
-    MenuLayer &GetMenu()                      { return m_menuLayer; }
+    bool CanDisplayMenu()                      { return m_menuLayer.isRunnable(); }
+    MenuLayer &GetMenu()                       { return m_menuLayer; }
+    NetworkLayer *GetNetwork()                 { return &m_network; }
+
+    [[maybe_unused]]
+    std::string GetDllPath()                   { return m_dll_path; }
+    std::string GeneratePath(const char *dest) { return m_dll_path + dest; }
 
     static D3DHook *GetHook();
   private:
     bool SetupSwapChain();
     void SetupVTables();
     bool SetupHooks();
+    std::string LocateDllPath(HMODULE hModule) const;
 
     void AttachMenu(IDXGISwapChain* swap_chain);
 
@@ -71,8 +81,10 @@ namespace Overlay
     DWORD_PTR*	DeviceVTablePtr        { nullptr };
     DWORD_PTR*  DeviceContextVTablePtr { nullptr };
   private:
-    HWND      m_hWnd;
-    MenuLayer m_menuLayer;
+    HWND               m_hWnd;
+    const std::string  m_dll_path;
+    NetworkLayer       m_network;
+    MenuLayer          m_menuLayer;
   };
 }
 

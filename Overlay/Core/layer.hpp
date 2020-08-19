@@ -1,7 +1,6 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_LAYER_HPP
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_LAYER_HPP
 
-#include <Windows.h>
 #include <string>
 
 namespace Overlay

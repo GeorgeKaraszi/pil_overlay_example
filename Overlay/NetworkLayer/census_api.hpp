@@ -1,25 +1,40 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_WEBSOCKETS_CENSUS_API_HPP
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_WEBSOCKETS_CENSUS_API_HPP
 #include "boost.hpp"
-#include "websocket.hpp"
+#include "uri.hpp"
+#include <queue>
+#include <set>
 
 namespace Overlay
 {
+  class NetworkLayer;
   class CensusAPI
   {
   public:
+    typedef typename std::function<void(const JSON&)> CALLBACK_T;
+
+  public:
     CensusAPI() = default;
-    CensusAPI(WebSocket *ws);
+    CensusAPI(NetworkLayer *network);
     CensusAPI(const CensusAPI &) = default;
-    JSON get_outfit_details(const std::string &outfit_tag);
-    std::string get_image_data(const std::string_view &image_path);
+
+    inline bool QueueEmpty() { return m_queue.empty(); }
+    void QueueImageData(const std::string_view &image_path, CALLBACK_T &callback);
+    void QueueOutfitRoster(std::string outfit_tag, CALLBACK_T &callback);
+    void PollQueue();
 
   private:
-    WebSocket   *m_ws   = 0;
-    const char  *m_host = "census.daybreakgames.com";
-    std::string m_outfit_lookup_schema;
+    inline void AddToQueue(Uri &uri, CALLBACK_T &callback)
+    {
+      m_queue.push(std::make_pair(uri, callback));
+    }
 
-    std::string make_request(const Uri &uri);
+  private:
+    NetworkLayer *m_network   = 0;
+    std::string  m_outfit_lookup_schema;
+    std::queue<std::pair<Uri, CALLBACK_T>> m_queue;
+
+    friend class NetworkLayer;
   };
 }
 

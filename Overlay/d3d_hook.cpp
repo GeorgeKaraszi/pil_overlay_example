@@ -1,7 +1,7 @@
 #include "pch.hpp"
 
 static std::once_flag g_menu_is_attached;
-static WNDPROC        lpOriginalWindowProc  = nullptr;
+static WNDPROC lpOriginalWindowProc  = nullptr;
 static Overlay::D3DHook* s_Instance  = nullptr;
 
 //===================================================================================================================
@@ -37,7 +37,12 @@ LRESULT APIENTRY WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 namespace Overlay
 {
-  D3DHook::D3DHook(HMODULE hModule) : m_hModule(hModule), m_hWnd(GetForegroundWindow()), m_menuLayer()
+  D3DHook::D3DHook(HMODULE hModule)
+  : m_hModule(hModule),
+    m_hWnd(GetForegroundWindow()),
+    m_dll_path(LocateDllPath(hModule)),
+    m_network(m_dll_path),
+    m_menuLayer()
   {
     assert(BLANK_PTR(s_Instance) && "There exists an Instance of D3DHook already!");
     s_Instance           = this;
@@ -45,37 +50,50 @@ namespace Overlay
   }
 
   //-----------------------------------------------------------------------------------------------------------------
-  void D3DHook::Start()
+  bool D3DHook::Start()
   {
-    if(SetupSwapChain())
-    {
-      SetupVTables();
-
-      if(SetupHooks())
-      {
-        while (!(GetAsyncKeyState(VK_DELETE) & 0x1)) { Sleep(100); }
-      }
-    }
-    else
+    if(!SetupSwapChain())
     {
       MessageBoxW(m_hWnd, L"Failed to create device and swapchain.", L"Fatal Error", MB_ICONERROR);
+      return false;
+    }
+
+    SetupVTables();
+
+    if(!SetupHooks())
+    {
+      MessageBoxW(m_hWnd, L"Failed to establish DirectX.", L"Fatal Error", MB_ICONERROR);
+      return false;
+    }
+
+    return true;
+  }
+
+  //-----------------------------------------------------------------------------------------------------------------
+  void D3DHook::Run()
+  {
+    auto sleep_time = std::chrono::milliseconds(500);
+
+    while(!(GetAsyncKeyState(VK_DELETE) & 0x1))
+    {
+      m_network.async_run();
+      std::this_thread::sleep_for(sleep_time);
     }
   }
 
   //-----------------------------------------------------------------------------------------------------------------
-  void D3DHook::Shutdown() const
+  void D3DHook::Shutdown()
   {
     if(PRESENT_PTR(d3dDevicePtr))  { d3dDevicePtr->Release();  }
     if(PRESENT_PTR(d3dContextPtr)) { d3dContextPtr->Release(); }
     if(PRESENT_PTR(swapChainPtr))  { swapChainPtr->Release();  }
-
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
 
     SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, (LONG_PTR)lpOriginalWindowProc);
 
+    m_network.Shutdown();
     m_menuLayer.OnDetach();
-
     FreeLibraryAndExitThread(m_hModule, 0);
   }
 
@@ -188,6 +206,15 @@ namespace Overlay
     }
 
     return MH_EnableHook((DWORD_PTR*)vTableEntry) == MH_OK;
+  }
+
+  //-----------------------------------------------------------------------------------------------------------------
+  std::string D3DHook::LocateDllPath(HMODULE hModule) const
+  {
+    char dll_path[MAX_PATH]      = "\0";
+    size_t path_length           = GetModuleFileName(hModule, dll_path, MAX_PATH);
+    std::string_view path_finder = { dll_path, path_length };
+    return std::string(path_finder.substr(0, path_finder.find_last_of("/\\")+1));
   }
 
   //-----------------------------------------------------------------------------------------------------------------
