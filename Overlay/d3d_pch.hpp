@@ -22,6 +22,8 @@
 #include "Core/layer.hpp"
 #include "Core/layer_stack.hpp"
 
+#include "MenuLayer/menu_layer.hpp"
 #include "NetworkLayer/network_layer.hpp"
+#include "MenuLayer/log_layer.hpp"
 
 #endif //DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_PCH_HPP

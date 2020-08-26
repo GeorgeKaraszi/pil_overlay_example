@@ -1,7 +1,6 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_IMGUI_LAYER_HPP
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_IMGUI_LAYER_HPP
 
-#include <mutex>
 #include "../Core/layer.hpp"
 
 namespace Overlay
@@ -10,12 +9,13 @@ namespace Overlay
   {
   public:
     ImGuiLayer();
+    ImGuiLayer(const char *name, bool runnable) : Layer(name, runnable) {}
     ImGuiLayer(const ImGuiLayer&) = default;
     ~ImGuiLayer() override        = default;
 
     virtual void OnAttach() override;
-    void OnDetach() const override;
-    void OnEvent()  override;
+    virtual void OnDetach() override;
+    virtual void OnEvent()  override;
 
     virtual void Begin();
     virtual void End();

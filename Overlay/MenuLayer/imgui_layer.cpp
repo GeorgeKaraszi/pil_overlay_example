@@ -17,7 +17,7 @@ namespace Overlay
     ApplyGuiProfile();
   }
 
-  void ImGuiLayer::OnDetach() const
+  void ImGuiLayer::OnDetach()
   {
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
