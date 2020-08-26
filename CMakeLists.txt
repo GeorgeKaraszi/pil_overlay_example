@@ -13,12 +13,12 @@ else()
 endif()
 
 
-#if (CMAKE_BUILD_TYPE STREQUAL "Release")
-#    message("Building RELEASE!")
-#    add_compile_options(/O2)
-#else()
-#    message("Building DEBUG! ${CMAKE_BUILD_TYPE}")
-#endif()
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    message("Building RELEASE!")
+    add_compile_options(/O2)
+else()
+    add_definitions(-DOVERLAY_DEBUG)
+endif()
 
 
 
