@@ -1,12 +1,11 @@
 #include "census_api.hpp"
-#include "network_layer.hpp"
-#include <iostream>
+#include "../pch.hpp"
 
 namespace Overlay
 {
   CensusAPI::CensusAPI(NetworkLayer *network) : m_network(network)
   {
-    assert(m_network != nullptr && "(CensusAPI) Networklayer is a nullptr!");
+    assert(PRESENT_PTR(m_network) && "(CensusAPI) Networklayer is a nullptr!");
     std::string outfit_lookup_schema = R"(
       ?alias_lower=%s
       &c:join=outfit_member
@@ -62,25 +61,44 @@ namespace Overlay
     if(m_queue.empty())
       return;
 
-    Uri uri                                 = m_queue.front().first;
-    CALLBACK_T callback                     = m_queue.front().second;
+    auto uri                                = m_queue.front().first;
+    auto callback                           = m_queue.front().second;
     auto stream                             = beast::tcp_stream(m_network->GenerateIOC());
     http::request<http::string_body>  req   = { http::verb::get, uri.Request, 11 };
     http::response<http::string_body> res;
-    beast::flat_buffer                buffer;
-    beast::error_code                 ec;
+    beast::flat_buffer buffer;
+    beast::error_code ec;
+    auto error_handle = [&](const char* what) {
+      if(!ec)
+      {
+        return false;
+      }
+
+      m_network->fail(ec, what);
+      stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+      m_queue.pop();
+
+      return true;
+    };
 
     req.set(http::field::host, uri.Host);
     req.set(http::field::user_agent, PIL_USER_AGENT);
 
     stream.connect(m_network->Resolve(uri));
 
-    http::write(stream, req);
-    http::read(stream, buffer, res);
+    http::write(stream, req, ec);
+
+    if(error_handle("PollQueue::http::write")) return;
+
+    http::read(stream, buffer, res, ec);
+
+    if(error_handle("PollQueue::http::read")) return;
+
 
     stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-
+    LogLayer::GetLogger()->addLog(res.body());
     callback(JSON::parse(res.body()));
+
     m_queue.pop();
   }
 }

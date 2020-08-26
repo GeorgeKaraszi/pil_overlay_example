@@ -11,7 +11,7 @@ namespace Overlay
   class CensusAPI
   {
   public:
-    typedef typename std::function<void(const JSON&)> CALLBACK_T;
+    typedef typename std::function<bool(const JSON&)> CALLBACK_T;
 
   public:
     CensusAPI() = default;
@@ -19,14 +19,14 @@ namespace Overlay
     CensusAPI(const CensusAPI &) = default;
 
     inline bool QueueEmpty() { return m_queue.empty(); }
-    void QueueImageData(const std::string_view &image_path, CALLBACK_T &callback);
-    void QueueOutfitRoster(std::string outfit_tag, CALLBACK_T &callback);
+    void QueueImageData(const std::string_view &image_path, CALLBACK_T&);
+    void QueueOutfitRoster(std::string outfit_tag, CALLBACK_T&);
     void PollQueue();
 
   private:
-    inline void AddToQueue(Uri &uri, CALLBACK_T &callback)
+    inline void AddToQueue(Uri &uri, CALLBACK_T &success)
     {
-      m_queue.push(std::make_pair(uri, callback));
+      m_queue.push(std::make_pair(uri, success));
     }
 
   private:
