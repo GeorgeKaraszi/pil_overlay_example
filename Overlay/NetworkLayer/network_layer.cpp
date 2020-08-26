@@ -1,13 +1,21 @@
 #include <fstream>
+#include "../pch.hpp"
 #include "network_layer.hpp"
 #include "root_certificates.h"
 
+
+static Overlay::NetworkLayer* g_network_layer = nullptr;
+
 namespace Overlay
 {
-  NetworkLayer::NetworkLayer(const char *api_key) : m_api_key(api_key)
+  NetworkLayer::NetworkLayer(const char *api_key) : Layer("NetworkLayer", true)
   {
-    m_census    = CensusAPI(this);
-    m_websocket = std::make_shared<WebSocket>(this);
+    assert(BLANK_PTR(g_network_layer) && "There exists an Instance of NetworkLayer already!");
+
+    m_api_key       = api_key;
+    m_census        = CensusAPI(this);
+    m_websocket     = std::make_shared<WebSocket>(this);
+    g_network_layer = this;
   }
 
   NetworkLayer::NetworkLayer(const std::string &dll_path) : NetworkLayer(fetch_api_key(dll_path).c_str())
@@ -18,14 +26,29 @@ namespace Overlay
   {
     m_ioc.stop();
     m_websocket.reset();
+    g_network_layer = nullptr;
+  }
+
+  //-----------------------------------------------------------------------------------------------------------------
+  NetworkLayer *NetworkLayer::GetNetworkLayer()
+  {
+    return g_network_layer;
+  }
+
+  //-----------------------------------------------------------------------------------------------------------------
+
+  void NetworkLayer::OnAttach()
+  {
+    m_websocket->connect();
   }
 
   //-----------------------------------------------------------------------------------------------------------------
   void NetworkLayer::Shutdown()
   {
-    if(m_keep_running)
+    SetRunnable(false);
+
+    if(!m_ioc.stopped())
     {
-      m_keep_running = false;
       m_ioc.stop();
     }
   }
@@ -33,6 +56,9 @@ namespace Overlay
   //-----------------------------------------------------------------------------------------------------------------
   void NetworkLayer::async_run()
   {
+    if(!m_runnable)
+      return;
+
     if(m_ioc.stopped())
       m_ioc.restart();
 
@@ -59,5 +85,19 @@ namespace Overlay
 
     assert(!api_key.empty() && "(api_key.txt) Did not contain a valid API KEY inside the file.");
     return api_key;
+  }
+
+  //----------------------------------------------------------------------------------------------------------------
+
+  void NetworkLayer::fail(beast::error_code ec, const char *what)
+  {
+    auto logger = LogLayer::GetLogger();
+    char buffer[200];
+
+    if(BLANK_PTR(logger))
+      return;
+
+    sprintf_s(buffer, 200, "%s:%s", what, ec.message().c_str());
+    logger->addLog(LOG_LEVEL::CRITICAL, buffer);
   }
 }

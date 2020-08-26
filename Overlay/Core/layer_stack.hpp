@@ -15,6 +15,9 @@ namespace Overlay
     LayerStack() = default;
     ~LayerStack();
 
+    void AttachLayers();
+    void DeleteLayers();
+
     void PushLayer(pLayer layer);
     [[maybe_unused]]
     void PopLayer(pLayer layer);

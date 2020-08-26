@@ -1,10 +1,8 @@
 #ifndef DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_HOOK_HPP
 #define DIRECTX_OVERLAY_PROJECT_D3D_OVERLAY_D3D_HOOK_HPP
 
-#include <mutex>
-#include <MinHook.h>
 #include "d3d_pch.hpp"
-#include "MenuLayer/menu_layer.hpp"
+#include <MinHook.h>
 
 typedef HRESULT(WINAPI *D3D11Present) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 
@@ -44,10 +42,6 @@ namespace Overlay
     [[nodiscard]]
     IDXGISwapChain* GetSwapChain()      const  { return swapChainPtr; }
 
-    bool CanDisplayMenu()                      { return m_menuLayer.isRunnable(); }
-    MenuLayer &GetMenu()                       { return m_menuLayer; }
-    NetworkLayer *GetNetwork()                 { return &m_network; }
-
     [[maybe_unused]]
     std::string GetDllPath()                   { return m_dll_path; }
     std::string GeneratePath(const char *dest) { return m_dll_path + dest; }
@@ -83,8 +77,7 @@ namespace Overlay
   private:
     HWND               m_hWnd;
     const std::string  m_dll_path;
-    NetworkLayer       m_network;
-    MenuLayer          m_menuLayer;
+    LayerStack         m_layers;
   };
 }
 

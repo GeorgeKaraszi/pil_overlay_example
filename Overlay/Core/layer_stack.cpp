@@ -5,12 +5,27 @@ namespace Overlay
 
   LayerStack::~LayerStack()
   {
-    for(pLayer layer : m_Layers)
+    DeleteLayers();
+  }
+
+  void LayerStack::DeleteLayers()
+  {
+    for(size_t i = 0; i < m_Layers.size(); i++)
     {
-      layer->OnDetach();
+      m_Layers[i]->OnDetach();
+      delete m_Layers[i];
+      m_Layers[i] = nullptr;
     }
 
     m_Layers.clear();
+  }
+
+  void LayerStack::AttachLayers()
+  {
+    for(pLayer layer : m_Layers)
+    {
+      layer->OnAttach();
+    }
   }
 
   void LayerStack::PushLayer(pLayer layer)

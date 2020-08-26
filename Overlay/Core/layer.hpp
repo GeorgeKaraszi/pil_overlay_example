@@ -15,7 +15,7 @@ namespace Overlay
     [[maybe_unused]]
     virtual void OnAttach()              {};
     [[maybe_unused]]
-    virtual void OnDetach() const        {};
+    virtual void OnDetach()              {};
     [[maybe_unused]]
     virtual void OnUpdate()              {};
     [[maybe_unused]]

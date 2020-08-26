@@ -1,8 +1,8 @@
-#include "pch.hpp"
+#include "d3d_hook.hpp"
 
 static std::once_flag g_menu_is_attached;
 static WNDPROC lpOriginalWindowProc  = nullptr;
-static Overlay::D3DHook* s_Instance  = nullptr;
+static Overlay::D3DHook* g_hook      = nullptr;
 
 //===================================================================================================================
 // D3D Callback Hook Methods
@@ -19,8 +19,9 @@ HRESULT WINAPI PresentHook(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT F
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT APIENTRY WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  auto menu_layer = Overlay::MenuLayer::GetMenuLayer();
 
-  if(Overlay::D3DHook::GetHook()->CanDisplayMenu())
+  if(PRESENT_PTR(menu_layer) && menu_layer->isRunnable())
   {
     if(uMsg != WM_CLOSE && uMsg != WM_DESTROY && uMsg != WM_SIZING)
     {
@@ -40,12 +41,15 @@ namespace Overlay
   D3DHook::D3DHook(HMODULE hModule)
   : m_hModule(hModule),
     m_hWnd(GetForegroundWindow()),
-    m_dll_path(LocateDllPath(hModule)),
-    m_network(m_dll_path),
-    m_menuLayer()
+    m_dll_path(LocateDllPath(hModule))
   {
-    assert(BLANK_PTR(s_Instance) && "There exists an Instance of D3DHook already!");
-    s_Instance           = this;
+    assert(BLANK_PTR(g_hook) && "There exists an Instance of D3DHook already!");
+
+    m_layers.PushLayer(new NetworkLayer(m_dll_path));
+    m_layers.PushLayer(new MenuLayer());
+    m_layers.PushLayer(new LogLayer());
+
+    g_hook               = this;
     lpOriginalWindowProc = (WNDPROC)SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, (LONG_PTR)WndProc);
   }
 
@@ -72,11 +76,12 @@ namespace Overlay
   //-----------------------------------------------------------------------------------------------------------------
   void D3DHook::Run()
   {
-    auto sleep_time = std::chrono::milliseconds(500);
+    auto sleep_time    = std::chrono::milliseconds(100);
+    auto network_layer = NetworkLayer::GetNetworkLayer();
 
-    while(!(GetAsyncKeyState(VK_DELETE) & 0x1))
+    while(PRESENT_PTR(network_layer) && !(GetAsyncKeyState(VK_DELETE) & 0x1))
     {
-      m_network.async_run();
+      network_layer->OnEvent();
       std::this_thread::sleep_for(sleep_time);
     }
   }
@@ -92,8 +97,8 @@ namespace Overlay
 
     SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, (LONG_PTR)lpOriginalWindowProc);
 
-    m_network.Shutdown();
-    m_menuLayer.OnDetach();
+    m_layers.DeleteLayers();
+
     FreeLibraryAndExitThread(m_hModule, 0);
   }
 
@@ -101,14 +106,20 @@ namespace Overlay
 
   void D3DHook::RenderStack(IDXGISwapChain *swap_chain)
   {
+    auto menu_layer = MenuLayer::GetMenuLayer();
+
+    if(BLANK_PTR(menu_layer))
+      return;
+
     AttachMenu(swap_chain);
+
 
     if (GetAsyncKeyState(VK_F9) & 0x1)
     {
-      m_menuLayer.ToggleRunnable();
+      menu_layer->ToggleRunnable();
     }
 
-    m_menuLayer.OnEvent();
+    menu_layer->OnEvent();
   }
 
   //-----------------------------------------------------------------------------------------------------------------
@@ -174,7 +185,7 @@ namespace Overlay
     std::call_once(g_menu_is_attached, [&]{
       swap_chain->GetDevice(__uuidof(d3dDevicePtr), reinterpret_cast<void**>(&d3dDevicePtr));
       d3dDevicePtr->GetImmediateContext(&d3dContextPtr);
-      m_menuLayer.OnAttach();
+      m_layers.AttachLayers();
     });
   }
 
@@ -220,6 +231,6 @@ namespace Overlay
   //-----------------------------------------------------------------------------------------------------------------
   D3DHook *D3DHook::GetHook()
   {
-    return s_Instance;
+    return g_hook;
   }
 }
