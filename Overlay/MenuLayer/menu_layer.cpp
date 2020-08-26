@@ -1,11 +1,31 @@
+#include "menu_layer.hpp"
 #include "../pch.hpp"
+
+static Overlay::MenuLayer *g_menulayer = nullptr;
 
 namespace Overlay
 {
+  MenuLayer::MenuLayer() : ImGuiLayer("MenuLayer", true)
+  {
+    assert(BLANK_PTR(g_menulayer) && "There exists an Instance of MenuLayer already!");
+    g_menulayer = this;
+  }
+
+  MenuLayer *Overlay::MenuLayer::GetMenuLayer()
+  {
+    return g_menulayer;
+  }
+
   void MenuLayer::OnAttach()
   {
     ImGuiLayer::OnAttach();
     m_selected_menu = MENU_ITEM_SETTINGS;
+  }
+
+  void MenuLayer::OnDetach()
+  {
+    ImGuiLayer::OnDetach();
+    g_menulayer = nullptr;
   }
 
   void MenuLayer::OnEvent()
@@ -44,6 +64,11 @@ namespace Overlay
   {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4)ImColor::HSV(0.6f, 0.6f, 0.6f));
     ImGui::BeginChild("MenuBody", ImVec2(-FLT_MIN, 0.0f), false, ImGuiWindowFlags_NoDecoration);
+
+    if(PRESENT_PTR(LogLayer::GetLogger()))
+    {
+      LogLayer::GetLogger()->OnEvent();
+    }
 
     switch(m_selected_menu)
     {
@@ -103,45 +128,56 @@ namespace Overlay
     {
       SaveSettings();
     }
+
+    if(ImGui::SmallButton("Open logger"))
+    {
+      LogLayer::GetLogger()->SetRunnable(true);
+    }
   }
 
   void MenuLayer::TeamsMenu()
   {
-    auto render_players = [&](PlanetSide::Player* player) {
-      ImGui::PushID(player->uuid.c_str());
-      PlayerButton(player);
-      ImGui::PopID(); //uuid
-    };
-
     ImGui::Columns(2);
-    m_teams[0].ActivePlayers(render_players);
-    ImGui::NextColumn();
-    m_teams[1].ActivePlayers(render_players);
+    for(int i = 0; i < m_teams.size(); i++)
+    {
+      for(auto &player : m_teams[i])
+      {
+        ImGui::PushID(player.uuid.c_str());
+        PlayerButton(player);
+        ImGui::PopID(); //uuid
+      }
+      if((i + 1) != m_teams.size())
+        ImGui::NextColumn();
+    }
     ImGui::EndColumns();
   }
 
   void MenuLayer::ScoreMenu()
   {
+    auto callback = [&](PlanetSide::Player *player)
+    {
+      ImGui::PushID(player->uuid.c_str());
+      PlayerButton(*player);
+      ImGui::PopID(); //uuid
+    };
 
+    ImGui::Columns(2);
+    m_teams[0].ActivePlayers(callback);
+    ImGui::NextColumn();
+    m_teams[1].ActivePlayers(callback);
+    ImGui::EndColumns();
   }
 
   void MenuLayer::SaveSettings()
   {
-    auto census = D3DHook::GetHook()->GetNetwork()->GetCensus();
+    CensusAPI::CALLBACK_T callback;
+    auto census = NetworkLayer::GetNetworkLayer()->GetCensus();
 
-    if(strcmp(m_settings.current_team1_tag, m_settings.prev_team1_tag) != 0)
-    {
-      CensusAPI::CALLBACK_T callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[0], std::placeholders::_1);
-      census->QueueOutfitRoster(m_settings.current_team1_tag, callback);
-      strcpy_s(m_settings.prev_team1_tag, 8, m_settings.current_team1_tag);
-    }
+    callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[0], std::placeholders::_1);
+    census->QueueOutfitRoster(m_settings.current_team1_tag, callback);
 
-    if(strcmp(m_settings.current_team2_tag, m_settings.prev_team2_tag) != 0)
-    {
-      CensusAPI::CALLBACK_T callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[1], std::placeholders::_1);
-      census->QueueOutfitRoster(m_settings.current_team2_tag, callback);
-      strcpy_s(m_settings.prev_team2_tag, 8, m_settings.current_team2_tag);
-    }
+    callback = std::bind(&PlanetSide::Team::InitializeRoster, &m_teams[1], std::placeholders::_1);
+    census->QueueOutfitRoster(m_settings.current_team2_tag, callback);
   }
 
   void MenuLayer::TopMenuButton(const char* menu_name, ImVec2 &size, MenuItemType target)
@@ -173,14 +209,14 @@ namespace Overlay
     }
   }
 
-  void MenuLayer::PlayerButton(PlanetSide::Player *player)
+  void MenuLayer::PlayerButton(PlanetSide::Player &player)
   {
-    PlayerButton(player->GetDisplayName(), player->faction);
+    PlayerButton(player.GetDisplayName(), player.faction, &player.benched);
   }
 
-  void MenuLayer::PlayerButton(const char *name, int faction)
+  void MenuLayer::PlayerButton(const char *name, int faction, bool *benched)
   {
-    static const ImGuiButtonFlags dummy_flags = ImGuiButtonFlags_Disabled | ImGuiButtonFlags_NoNavFocus;
+    static const ImGuiButtonFlags dummy_flags = ImGuiButtonFlags_NoNavFocus;
     static const ImVec2 dummy_btn_size        = ImVec2(-FLT_MIN, 30.0f);
 
     ImColor background;
@@ -204,8 +240,16 @@ namespace Overlay
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  background.Value);
     ImGui::PushStyleColor(ImGuiCol_Text,          foreground.Value);
 
-    ImGui::ButtonEx(name, dummy_btn_size, dummy_flags);
-
+    if(ImGui::ButtonEx(name, dummy_btn_size, dummy_flags))
+    {
+      ImGui::OpenPopup("bench_player_popup");
+    }
     ImGui::PopStyleColor(4);
+
+    if (ImGui::BeginPopup("bench_player_popup"))
+    {
+      ImGui::Checkbox("Bench Player", benched);
+      ImGui::EndPopup();
+    }
   }
 }

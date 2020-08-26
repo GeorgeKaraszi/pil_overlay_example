@@ -36,8 +36,9 @@ namespace PlanetSide
     void AddKill()               { kill_count++; }
     void AddDeath()              { death_count++; }
     void AddScore(int new_score) { score += new_score; }
+    void ToggleBenched()         { benched = !benched; }
 
-    const char *GetDisplayName()
+    const char *GetDisplayName() const
     {
       return alias_name.empty() ? player_name.c_str() : alias_name.c_str();
     }

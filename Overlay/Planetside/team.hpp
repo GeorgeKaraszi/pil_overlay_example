@@ -9,16 +9,24 @@ namespace PlanetSide
 {
   class Team
   {
+    typedef typename std::vector<Player> VPlayers;
   public:
     Team()            = default;
     Team(const Team&) = default;
     Team(const JSON &team_roster) { InitializeRoster(team_roster);  }
 
-    void InitializeRoster(const JSON &team_roster)
+    bool InitializeRoster(const JSON &team_roster)
     {
       Reset();
 
-      auto outfit = team_roster["outfit_list"][0];
+      if(team_roster["returned"] == 0 ||
+        !team_roster.contains("outfit_list") ||
+        !team_roster["outfit_list"].is_array())
+      {
+        return false;
+      }
+
+      auto outfit = team_roster["outfit_list"].front();
       outfit["alias"].get_to(m_name);
       outfit["outfit_id"].get_to(m_outfit_id);
 
@@ -29,6 +37,8 @@ namespace PlanetSide
           AddPlayer(player["character"]);
         }
       }
+
+      return true;
     }
 
     void ActivePlayers(std::function<void(Player*)> callback)
@@ -62,11 +72,19 @@ namespace PlanetSide
       m_player_map[player_uuid]->AddScore(new_score);
     }
 
+    VPlayers::iterator begin()             { return m_players.begin(); }
+    VPlayers::iterator end()               { return m_players.end(); }
+
+    [[nodiscard]]
+    VPlayers::const_iterator begin() const { return m_players.cbegin(); }
+    [[nodiscard]]
+    VPlayers::const_iterator end()   const { return m_players.cend(); }
+
   private:
     int                            m_score { 0 };
     std::string                    m_name;
     std::string                    m_outfit_id;
-    std::vector<Player>            m_players;
+    VPlayers                       m_players;
     std::map<std::string, Player*> m_player_map;
 
     void Reset()

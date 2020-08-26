@@ -9,7 +9,6 @@ namespace Overlay
   class MenuLayer : public ImGuiLayer
   {
     enum MENU_ITEM_ {
-      MENU_ITEM_NULL,
       MENU_ITEM_SCORE,
       MENU_ITEM_TEAMS,
       MENU_ITEM_SETTINGS
@@ -19,15 +18,15 @@ namespace Overlay
 
     struct Settings
     {
-      char current_team1_tag[8] = "FIJI\0";
-      char current_team2_tag[8] = "GOBS\0";
-      char prev_team1_tag[8]    = "\0";
-      char prev_team2_tag[8]    = "\0";
+      char current_team1_tag[6] = "FIJI\0";
+      char current_team2_tag[6] = "FOOI\0";
       int  match_timer          = 10;
     };
   public:
-    MenuLayer() : ImGuiLayer() {};
+    MenuLayer();
+    static MenuLayer *GetMenuLayer();
     void OnAttach() override;
+    void OnDetach() override;
     void OnEvent() override;
 
     Settings *GetSettings() { return &m_settings; }
@@ -35,7 +34,7 @@ namespace Overlay
   private:
     MenuItemType m_selected_menu;
     Settings     m_settings;
-    PlanetSide::Team m_teams[2] { PlanetSide::Team(), PlanetSide::Team() };
+    std::array<PlanetSide::Team, 2> m_teams { { PlanetSide::Team(), PlanetSide::Team() } };
 
     
     void RenderMenuBody();
@@ -44,8 +43,8 @@ namespace Overlay
     void ScoreMenu();
     void SaveSettings();
     void TopMenuButton(const char* menu_name, ImVec2 &size, MenuItemType target);
-    void PlayerButton(PlanetSide::Player *player);
-    void PlayerButton(const char *name, int faction);
+    void PlayerButton(PlanetSide::Player &player);
+    void PlayerButton(const char *name, int faction, bool *benched);
   };
 }
 
