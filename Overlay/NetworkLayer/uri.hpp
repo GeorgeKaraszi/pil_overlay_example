@@ -27,19 +27,16 @@ public:
 
   static Uri CensusUri(const std::string &api_key, const char* path, const char *request = nullptr)
   {
+    std::stringstream fmt_request;
+    fmt_request << "/s:" << api_key << path << request;
+
     Uri results  = {
         .ApiKey        = api_key,
         .Protocol      = "http",
         .Host          = "census.daybreakgames.com",
         .Port          = "80",
-        .Request       = path
+        .Request       = fmt_request.str()
     };
-
-    if(request != nullptr)
-    {
-      if(request[0] != '?') results.Request += '?';
-      results.Request += request + ("&service-id=s:" + api_key);
-    }
 
     return results;
   }
